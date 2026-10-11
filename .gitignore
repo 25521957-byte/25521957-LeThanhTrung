@@ -1,0 +1,10 @@
+# Du lieu Visual Studio
+.vs/
+
+# Ket qua build
+[Bb]in/
+[Oo]bj/
+
+# Cau hinh rieng tren may
+*.user
+*.suo
