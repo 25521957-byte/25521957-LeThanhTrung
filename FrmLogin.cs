@@ -1,8 +1,9 @@
-﻿
 using Microsoft.Data.SqlClient;
 using System;
+using System.Data.Common;
 using System.Drawing;
 using System.Security.Cryptography;
+using System.Text;
 using System.Windows.Forms;
 
 namespace MyProject
@@ -12,9 +13,6 @@ namespace MyProject
         private TextBox txtUsername;
         private TextBox txtPassword;
         private Button btnLogin;
-
-        private readonly string chuoiKetNoi =
-            @"Data Source=DESKTOP-K35USV3;Initial Catalog=QuanLyNguoiDung;Integrated Security=True;TrustServerCertificate=True;";
 
         public FrmLogin()
         {
@@ -67,16 +65,14 @@ namespace MyProject
             AcceptButton = btnLogin;
         }
 
-        private static byte[] BamMatKhau(
-            string matKhau, byte[] salt)
+        private static string HashPassword(string password)
         {
-            using (var pbkdf2 = new Rfc2898DeriveBytes(
-                matKhau,
-                salt,
-                600000,
-                HashAlgorithmName.SHA256))
+            using (SHA256 sha = SHA256.Create())
             {
-                return pbkdf2.GetBytes(32);
+                byte[] bytes = sha.ComputeHash(
+                    Encoding.UTF8.GetBytes(password));
+
+                return Convert.ToHexString(bytes);
             }
         }
 
@@ -88,90 +84,65 @@ namespace MyProject
             if (string.IsNullOrWhiteSpace(username) ||
                 string.IsNullOrEmpty(password))
             {
-                MessageBox.Show(
-                    "Vui lòng nhập tài khoản và mật khẩu.");
+                MessageBox.Show("Vui lòng nhập tài khoản và mật khẩu.");
                 return;
             }
-
-            User user = null;
 
             try
             {
                 using (SqlConnection conn =
-                       new SqlConnection(chuoiKetNoi))
+                       DbConnection.GetConnection())
                 {
                     conn.Open();
 
                     string sql = @"
-                        SELECT UserId, TenDangNhap, HoTen, Email,
-                               MatKhau, Salt
-                        FROM dbo.Users
-                        WHERE TenDangNhap = @TenDangNhap";
+                        SELECT UserId, Username, FullName, Email
+                        FROM Users
+                        WHERE Username = @Username
+                          AND PasswordHash = @PasswordHash";
 
-                    using (SqlCommand cmd =
-                           new SqlCommand(sql, conn))
+                    using (SqlCommand cmd = new SqlCommand(sql, conn))
                     {
-                        cmd.Parameters.Add(
-                            "@TenDangNhap",
-                            System.Data.SqlDbType.NVarChar,
-                            50).Value = username;
+                        cmd.Parameters.AddWithValue("@Username", username);
+                        cmd.Parameters.AddWithValue(
+                            "@PasswordHash", HashPassword(password));
 
-                        using (SqlDataReader reader =
-                               cmd.ExecuteReader())
+                        using (SqlDataReader reader = cmd.ExecuteReader())
                         {
-                            if (reader.Read())
+                            if (!reader.Read())
                             {
-                                byte[] hashTrongDB =
-                                    (byte[])reader["MatKhau"];
-
-                                byte[] saltTrongDB =
-                                    (byte[])reader["Salt"];
-
-                                byte[] hashNhap =
-                                    BamMatKhau(password, saltTrongDB);
-
-                                if (CryptographicOperations
-                                    .FixedTimeEquals(
-                                        hashNhap, hashTrongDB))
-                                {
-                                    user = new User
-                                    {
-                                        UserId = reader.GetInt32(
-                                            reader.GetOrdinal("UserId")),
-
-                                        Username = reader[
-                                            "TenDangNhap"].ToString(),
-
-                                        FullName = reader[
-                                            "HoTen"].ToString(),
-
-                                        Email = reader["Email"] == DBNull.Value
-                                            ? ""
-                                            : reader["Email"].ToString()
-                                    };
-                                }
+                                MessageBox.Show(
+                                    "Tên đăng nhập hoặc mật khẩu không đúng.");
+                                return;
                             }
+
+                            User user = new User
+                            {
+                                UserId = reader.GetInt32(
+                                    reader.GetOrdinal("UserId")),
+
+                                Username = reader["Username"].ToString(),
+
+                                FullName = reader["FullName"].ToString(),
+
+                                Email = reader["Email"] == DBNull.Value
+                                    ? ""
+                                    : reader["Email"].ToString()
+                            };
+
+                            Hide();
+
+                            using (FrmMain mainForm = new FrmMain(user))
+                            {
+                                mainForm.ShowDialog();
+                            }
+
+                            txtPassword.Clear();
+                            Show();
+                            Activate();
                         }
                     }
                 }
-
-                if (user == null)
-                {
-                    MessageBox.Show(
-                        "Tên đăng nhập hoặc mật khẩu không đúng.");
-                    return;
-                }
-
-                Hide();
-
-                using (FrmMain mainForm = new FrmMain(user))
-                {
-                    mainForm.ShowDialog();
-                }
-
-                txtPassword.Clear();
-                Show();
-                Activate();
             }
             catch (Exception ex)
             {
