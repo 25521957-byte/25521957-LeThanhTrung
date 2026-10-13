@@ -1,11 +1,11 @@
-﻿using Microsoft.Data.SqlClient;
+using Microsoft.Data.SqlClient;
 
 namespace MyProject
 {
     public static class DbConnection
     {
         private static readonly string connectionString =
-            @"Server=DESKTOP-K35USV3;
+            @"Server=ADMIN\SQLEXPRESS;
               Database=QuanLyNguoiDung;
               Integrated Security=True;
               Encrypt=True;
