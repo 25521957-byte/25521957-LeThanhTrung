@@ -1,6 +1,6 @@
-﻿using Microsoft.Data.SqlClient;
+﻿
+using Microsoft.Data.SqlClient;
 using System;
-using System.Data.Common;
 using System.Drawing;
 using System.Windows.Forms;
 
@@ -17,12 +17,14 @@ namespace MyProject
         private Label lblEmail;
         private Button btnLogout;
 
+        private readonly string chuoiKetNoi =
+            @"Data Source=DESKTOP-K35USV3;Initial Catalog=QuanLyNguoiDung;Integrated Security=True;TrustServerCertificate=True;";
+
         public FrmMain(User user)
         {
             currentUser = user;
 
             InitializeComponent();
-
             LoadUserInfo();
         }
 
@@ -91,21 +93,25 @@ namespace MyProject
             try
             {
                 using (SqlConnection conn =
-                       DbConnection.GetConnection())
+                       new SqlConnection(chuoiKetNoi))
                 {
                     conn.Open();
 
                     string sql = @"
-                        SELECT UserId, Username, FullName, Email
-                        FROM Users
+                        SELECT UserId, TenDangNhap, HoTen, Email
+                        FROM dbo.Users
                         WHERE UserId = @UserId";
 
-                    using (SqlCommand cmd = new SqlCommand(sql, conn))
+                    using (SqlCommand cmd =
+                           new SqlCommand(sql, conn))
                     {
-                        cmd.Parameters.AddWithValue(
-                            "@UserId", currentUser.UserId);
+                        cmd.Parameters.Add(
+                            "@UserId",
+                            System.Data.SqlDbType.Int
+                        ).Value = currentUser.UserId;
 
-                        using (SqlDataReader reader = cmd.ExecuteReader())
+                        using (SqlDataReader reader =
+                               cmd.ExecuteReader())
                         {
                             if (reader.Read())
                             {
@@ -115,11 +121,11 @@ namespace MyProject
 
                                 lblUsername.Text =
                                     "Tên đăng nhập: "
-                                    + reader["Username"];
+                                    + reader["TenDangNhap"];
 
                                 lblFullName.Text =
                                     "Họ và tên: "
-                                    + reader["FullName"];
+                                    + reader["HoTen"];
 
                                 lblEmail.Text =
                                     "Email: "
@@ -129,7 +135,7 @@ namespace MyProject
 
                                 lblWelcome.Text =
                                     "Xin chào, "
-                                    + reader["FullName"] + "!";
+                                    + reader["HoTen"] + "!";
                             }
                             else
                             {

@@ -6,7 +6,7 @@ namespace MyProject
     {
         private static readonly string connectionString =
             @"Server=DESKTOP-K35USV3;
-              Database=MyAppDB;
+              Database=QuanLyNguoiDung;
               Integrated Security=True;
               Encrypt=True;
               TrustServerCertificate=True;";
